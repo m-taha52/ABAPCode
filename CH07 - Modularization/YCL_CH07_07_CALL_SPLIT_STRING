@@ -1,125 +1,75 @@
 REPORT YCL_CH07_07_CALL_SPLIT_STRING LINE-SIZE 150.
+
 **************************************************
-* Calling Function Module YCL_CH07_SPLIT_STRING **
+* Calling Function Module YCL_CH07_SPLIT_STRING *
 **************************************************
-***********************************************
-* note on MESSAGE statement:-
- **
-*
- **
-* exceptions raised in function module has
- **
-* message type 'S' or status. if you raise
- **
-* exception with message type 'E' or error
- **
-* the program exits after return from
- **
-* function module, on issuing the message.
- **
-* you do not want the program to be exit,
- **
-* yet you want the message to appear like
- **
-* an error message. that is why you have
- **
-* added the phrase DISPLAY LIKE 'E' with the **
-* message statement after return from
- **
-* function module 'YCL_CH07_SPLIT_STRING'.
- **
-***********************************************
-***********************************************
-* declare data.
- **
-* input amount figure through PARAMETERS
- **
-*
- **
-* CALL FUBCTION 'SPELL_AMOUNT'..
- **
-* check SY-SUBRC etc.
- **
-* CONCATENATE SPELL-WORD SPELL-DECWORD INTO **
-* ISTR SEPARATED BY ' '
- **
-*
- **
-* CALL FUNCTION 'YCL_CH07_SPLIT_STRING'...
- **
-* check SY-SUBRC etc.
- **
-* output ISTR, STRGA (LOOP...ENDLOOP.)
- **
-***********************************************
-DATA: STRG(40) TYPE C,
-STRGA
- LIKE STANDARD TABLE OF STRG,
-ISTR
- TYPE STRING,
-*
- ISTRD(300) TYPE N,
-SPELL
- TYPE SPELL.
+* Note on MESSAGE statement:                    *
+* Exceptions raised in the function module have *
+* message type 'S' (status). If an exception is *
+* raised with message type 'E' (error), the      *
+* program exits after returning from the        *
+* function module. To avoid exiting the program *
+* but still display the message as an error,    *
+* use DISPLAY LIKE 'E' with the MESSAGE statement.*
 **************************************************
-378
-PARAMETERS: AMT(7) TYPE P DECIMALS 2 DEFAULT
-'987654321.50'.
+
+DATA: STRG    TYPE C LENGTH 40,   " Variable to hold individual split strings
+      STRGA   LIKE STANDARD TABLE OF STRG,  " Internal table to store split results
+      ISTR    TYPE STRING,     " Variable to hold concatenated spell words
+      ISTRD   TYPE N LENGTH 300,  " Variable to hold the split string (not used here)
+      SPELL   TYPE SPELL.      " Structure to hold spell amount details
+
+PARAMETERS: AMT TYPE P DECIMALS 2 DEFAULT '987654321.50'. " Input amount figure
+
 START-OF-SELECTION.
-CALL FUNCTION 'SPELL_AMOUNT'
-EXPORTING
-AMOUNT
- = AMT
-CURRENCY
- = 'INR'
-FILLER
- = ' '
-LANGUAGE
- = SY-LANGU
-IMPORTING
-IN_WORDS
- = SPELL
-EXCEPTIONS
-NOT_FOUND
- = 1
-TOO_LARGE
- = 2
-OTHERS
- = 3
-.
-IF SY-SUBRC <> 0.
-MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
-WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
-EXIT.
-ENDIF.
-CONCATENATE SPELL-WORD SPELL-DECWORD INTO ISTR
-SEPARATED BY ' '.
-CALL FUNCTION 'YCL_CH07_SPLIT_STRING'
-EXPORTING
-STRING_TO_SPLIT
- = ISTR
-*
- STRING_TO_SPLIT
- = ISTRD
-TABLES
-STABLE
- = STRGA
-EXCEPTIONS
-IMPORT_PARAMETER_TYPE_INVALID
- = 1
-RETURN_TABLE_ELEMENT_NOT_TYPEC
- = 2
-OTHERS
- = 3
-.
-IF SY-SUBRC <> 0.
-MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
-WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
-DISPLAY LIKE 'E'.
-ELSE.
-WRITE:/5 ISTR.
-SKIP 2.
-LOOP AT STRGA INTO STRG.
-WRITE:/5 STRG .
-ENDLOOP.
-ENDIF.
+  " Call function module to convert amount to words
+  CALL FUNCTION 'SPELL_AMOUNT'
+    EXPORTING
+      AMOUNT     = AMT
+      CURRENCY   = 'INR'
+      FILLER     = ' '
+      LANGUAGE   = SY-LANGU
+    IMPORTING
+      IN_WORDS   = SPELL
+    EXCEPTIONS
+      NOT_FOUND  = 1
+      TOO_LARGE  = 2
+      OTHERS    = 3.
+
+  " Check if there was an error during SPELL_AMOUNT execution
+  IF SY-SUBRC <> 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    EXIT.
+  ENDIF.
+
+  " Concatenate SPELL-WORD and SPELL-DECWORD into ISTR
+  CONCATENATE SPELL-WORD SPELL-DECWORD INTO ISTR SEPARATED BY ' '.
+
+  " Call the function module to split the string
+  CALL FUNCTION 'YCL_CH07_SPLIT_STRING'
+    EXPORTING
+      STRING_TO_SPLIT = ISTR
+      STRING_TO_SPLIT = ISTRD
+    TABLES
+      STABLE = STRGA
+    EXCEPTIONS
+      IMPORT_PARAMETER_TYPE_INVALID = 1
+      RETURN_TABLE_ELEMENT_NOT_TYPEC = 2
+      OTHERS = 3.
+
+  " Check if there was an error during YCL_CH07_SPLIT_STRING execution
+  IF SY-SUBRC <> 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+            DISPLAY LIKE 'E'.
+  ELSE.
+    " Output the concatenated string
+    WRITE: /5 ISTR.
+    SKIP 2.
+
+    " Output each entry in the split result table
+    LOOP AT STRGA INTO STRG.
+      WRITE: /5 STRG.
+    ENDLOOP.
+  ENDIF.
